@@ -488,7 +488,13 @@ document.addEventListener('DOMContentLoaded',()=>{
       for(let i=1;i<=pdf.numPages;i++){
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        text += content.items.map(it=>it.str).join(' ') + '\n';
+        // 关键：item 之间没有换行，hasEOL 才是行尾标记
+        let line = '';
+        for(const it of content.items){
+          line += it.str;
+          if(it.hasEOL){ if(line.trim()) text += line.trim() + '\n'; line=''; }
+        }
+        if(line.trim()) text += line.trim() + '\n';
       }
       const list = parsePdfItems(text);
       if(list.length===0) throw new Error('未能从PDF中识别出工作项，请检查文本内容');
