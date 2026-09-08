@@ -1,0 +1,10 @@
+{
+  "projectName": "某办公楼建设项目",
+  "startDate": "2026-09-15",
+  "contractDurationDays": 100,
+  "milestones": [
+    { "name": "开工", "date": "2026-09-15" },
+    { "name": "主体结构封顶", "date": "2026-11-10" },
+    { "name": "竣工交付", "date": "2026-12-16" }
+  ]
+}

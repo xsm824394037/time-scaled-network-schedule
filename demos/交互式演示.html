@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>单代号时标网络进度计划 — 交互式演示</title>
+<style>
+  :root{
+    --crit:#d32f2f; --norm:#1976d2; --wave:#f57c00; --bg:#f4f6f8; --card:#fff;
+    --line:#e3e8ee; --text:#263238; --muted:#78909c; --accent:#0d6efd;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;background:var(--bg);color:var(--text);}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5;}
+  header h1{font-size:17px;margin:0;font-weight:700;}
+  header .badge{font-size:11px;background:#eef4ff;color:var(--accent);border:1px solid #cfe0ff;padding:2px 8px;border-radius:12px;}
+
+  .layout{display:grid;grid-template-columns:430px 1fr;gap:16px;padding:16px;align-items:start;}
+  @media (max-width:1100px){ .layout{grid-template-columns:1fr;} }
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px;}
+  .card h2{font-size:14px;margin:0 0 10px;color:#37474f;border-left:3px solid var(--accent);padding-left:8px;}
+  .card h2 .hint{font-weight:400;color:var(--muted);font-size:11px;margin-left:6px;}
+
+  .row{display:flex;gap:10px;margin-bottom:8px;}
+  .row label{flex:1;font-size:12px;color:var(--muted);}
+  .row input,.row select{width:100%;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;margin-top:4px;font-family:inherit;}
+  button{font-family:inherit;cursor:pointer;}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .btn{padding:7px 12px;font-size:13px;border-radius:7px;border:1px solid var(--line);background:#fff;color:#37474f;}
+  .btn:hover{border-color:#b3c7e8;}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .btn.primary:hover{background:#0b5ed7;}
+  .btn.warn{background:#fff3e0;color:#e65100;border-color:#ffcc80;}
+  .btn.danger{background:#fdeaea;color:var(--crit);border-color:#f5c2c2;}
+
+  .stat{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;}
+  .stat .chip{background:#f7f9fc;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;}
+  .stat .chip b{color:var(--accent);}
+  .stat .chip.crit b{color:var(--crit);}
+
+  .table-wrap{overflow:auto;max-height:460px;border:1px solid var(--line);border-radius:8px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:880px;}
+  th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap;}
+  th{background:#fafbfc;color:#52606d;font-weight:600;position:sticky;top:0;}
+  td input,td select{font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:5px;width:100%;font-family:inherit;}
+  td input.num{width:72px;}
+  td input.pred{width:90px;}
+  tr.crit-row td:first-child{background:#fdecea;}
+  tr{cursor:pointer;}
+  tr.seen{background:#eef4ff;}
+  .dur-auto{color:#0a7a3a;}
+  .dur-manual{color:#e65100;font-weight:600;}
+  .tag{font-size:10px;padding:1px 6px;border-radius:10px;background:#eef4ff;color:var(--accent);}
+  .tag.crit{background:#fdecea;color:var(--crit);}
+
+  .canvas-wrap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;position:sticky;top:70px;}
+  .svg-scroll{overflow:auto;max-height:78vh;border:1px solid var(--line);border-radius:8px;background:#fff;}
+  svg{display:block;}
+  .canvas-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .fps-wrap{font-size:12px;color:var(--muted);}
+  .demo-steps{font-size:12px;color:#37474f;margin-top:8px;min-height:18px;}
+  .demo-steps b{color:var(--crit);}
+
+  .footer{font-size:11px;color:var(--muted);text-align:center;padding:12px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏗 单代号时标网络进度计划 · 交互式演示</h1>
+  <span class="badge">双击本文件即可运行 · 无需服务器</span>
+</header>
+
+<div class="layout">
+  <!-- ===== 左侧：配置与数据 ===== -->
+  <div>
+    <div class="card">
+      <h2>项目参数</h2>
+      <div class="row">
+        <label>项目名称<input id="projName" value="某办公楼建设项目"></label>
+        <label>开工日期<input id="startDate" type="date" value="2026-09-15"></label>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" id="btnAdd">＋ 新增工作</button>
+        <button class="btn" id="btnReset">重置为样例</button>
+        <button class="btn" id="btnLoadJson">导入JSON工程</button>
+        <button class="btn warn" id="btnHighlight">▶ 关键线路动画</button>
+        <button class="btn danger" id="btnDownload">⬇ 导出SVG/PNG</button>
+      </div>
+      <input type="file" id="fileJson" accept=".json" style="display:none">
+      <div class="stat">
+        <span class="chip">计划工期 <b id="stkDur">–</b> 天</span>
+        <span class="chip crit">关键线路 <b id="stkCrit">–</b></span>
+        <span class="chip">工作数 <b id="stkCnt">–</b></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>工作项（可改工期 / 紧前 / 类别） <span class="hint">关键线路红色高亮</span></h2>
+      <div class="table-wrap">
+        <table id="tb"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 右侧：图 ===== -->
+  <div class="canvas-wrap">
+    <div class="canvas-toolbar">
+      <div><b>时标网络计划图</b> <span class="fps-wrap">（<span id="fps">–</span> 已自动重算）</span></div>
+      <div class="toolbar">
+        <button class="btn" id="btnZoomIn">＋</button>
+        <button class="btn" id="btnZoomOut">－</button>
+        <label class="fps-wrap">每格天数
+          <select id="pxPerDay" style="font-size:12px">
+            <option value="10">10px</option>
+            <option value="12" selected>12px</option>
+            <option value="16">16px</option>
+            <option value="20">20px</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="svg-scroll" id="svgScroll"></div>
+    <div class="demo-steps" id="demoSteps"></div>
+  </div>
+</div>
+
+<div class="footer">核心算法：工期估算 → 逻辑关系 → CPM 关键路径（ES/EF/LS/LF/TF/FF）→ 时标分层布局 → SVG 渲染。 双击 HTML 离线可用。</div>
+
+<script>
+"use strict";
+/* ================= 工效基准表（与原型 config/productivity.js 一致） ================= */
+const PRODUCTIVITY = {
+  prepare:    { label:'施工准备',       productivity:null, fixedDays:5 },
+  earthwork:  { label:'土方开挖',       productivity:1200, fixedDays:null },
+  cushion:    { label:'基础垫层',       productivity:120,  fixedDays:null },
+  foundation: { label:'基础及地下结构', productivity:300,  fixedDays:null },
+  structure:  { label:'主体结构',       productivity:400,  fixedDays:null },
+  masonry:    { label:'二次结构砌筑',   productivity:260,  fixedDays:null },
+  roof:       { label:'屋面工程',       productivity:200,  fixedDays:null },
+  facade:     { label:'外立面幕墙',     productivity:350,  fixedDays:null },
+  mep:        { label:'机电安装',       productivity:800,  fixedDays:null },
+  interior:   { label:'室内精装修',     productivity:450,  fixedDays:null },
+  sitework:   { label:'室外工程',       productivity:500,  fixedDays:null },
+  handover:   { label:'竣工验收',       productivity:null, fixedDays:7 },
+  other:      { label:'其他',           productivity:100,  fixedDays:null },
+};
+const FALLBACK = 100;
+const DEFAULT_SEQ = ['prepare','earthwork','cushion','foundation','structure','masonry','roof','facade','mep','interior','sitework','handover'];
+const CAT_KEYS = [
+ ['prepare',['施工准备','准备']],['earthwork',['土方','开挖','基坑']],['cushion',['垫层']],
+ ['foundation',['基础','桩基','承台','地下室']],['masonry',['砌筑','砌体','二次结构']],
+ ['roof',['屋面','防水','女儿墙']],['facade',['幕墙','外立面','外门窗']],
+ ['mep',['机电','安装','给排水','电气','暖通','消防','管线']],
+ ['interior',['精装修','装修','装饰','内墙','地面','吊顶','涂料']],
+ ['sitework',['室外','景观','道路','管网','场地']],
+ ['handover',['验收','竣工','移交','备案']],
+ ['structure',['主体结构','结构','混凝土','钢筋','模板']],
+];
+/* 初始化每项工期：人工指定优先，否则用建议工期（autoDur） */
+function computeDurations(list){
+  for(const it of list){
+    const d = (it.manualDuration && it.manualDuration > 0) ? it.manualDuration : autoDur(it).days;
+    it.duration = d > 0 ? Math.round(d) : 1;
+  }
+}
+
+/* ================= 状态 ================= */
+let items = [];
+let pxPerDay = 12;
+let svgOut = ''; // 当前渲染的 SVG 字符串（用于下载）
+let timer=null; let fpsCount=0; let animTimer=null; let demoMode=false;
+
+/* ================= 核心算法 ================= */
+function classify(name){
+  for(const [cat,keys] of CAT_KEYS){ if(keys.some(k=>name.includes(k))) return cat; }
+  return 'other';
+}
+function autoDur(item){
+  const p = PRODUCTIVITY[item.category]||PRODUCTIVITY.other;
+  if(p.fixedDays) return {days:p.fixedDays, basis:'固定工期'+p.fixedDays+'天'};
+  const prod = p.productivity || FALLBACK;
+  const d = Math.max(1, Math.ceil(item.quantity / prod));
+  return {days:d, basis:item.quantity+' '+item.unit+' ÷ '+prod+'/'+item.unit};
+}
+function buildLogic(list){
+  const ids = new Set(list.map(i=>i.id));
+  const hasPred = list.some(i => (i.predecessors||[]).length>0);
+  if(!hasPred){
+    const rank={}; DEFAULT_SEQ.forEach((c,i)=>rank[c]=i);
+    const s=[...list].sort((a,b)=>(rank[a.category]??99)-(rank[b.category]??99)|| a.id.localeCompare(b.id));
+    for(let i=1;i<s.length;i++) s[i].predecessors=[s[i-1].id];
+  }
+  // remove dangling
+  for(const it of list){ if(it.predecessors) it.predecessors = it.predecessors.filter(p=>ids.has(p)); }
+}
+function runCpm(list){
+  const byId={}; list.forEach(a=>byId[a.id]=a);
+  const succ={}; list.forEach(a=>succ[a.id]=[]);
+  for(const a of list) for(const p of (a.predecessors||[])) succ[p].push(a.id);
+  for(const a of list){ a.es = (a.predecessors||[]).length? Math.max(...a.predecessors.map(p=>byId[p].ef)):0; a.ef=a.es+a.duration; }
+  const dur=Math.max(...list.map(a=>a.ef));
+  const sorted=[...list].sort((a,b)=>b.ef-a.ef);
+  for(const a of sorted){ const su=succ[a.id]||[]; a.lf = su.length?Math.min(...su.map(s=>byId[s].ls)):dur; a.ls=a.lf-a.duration; }
+  for(const a of list){ a.tf=a.ls-a.es; const su=succ[a.id]||[]; a.ff=su.length?Math.min(...su.map(s=>byId[s].es))-a.ef:dur-a.ef; a.critical=Math.abs(a.tf)<1e-9; }
+  const cp=list.filter(a=>a.critical).sort((a,b)=>a.es-b.es).map(a=>a.id);
+  return {dur, cp};
+}
+function layout(list, dur){
+  const x0=64, y0=104, laneH=58, boxH=40, right=40, bottom=44;
+  const s=[...list].sort((a,b)=>a.es-b.es || b.duration-a.duration);
+  const ends=[];
+  for(const a of s){ let lane=0; while(lane<ends.length && ends[lane]>a.es+1e-6) lane++; if(lane===ends.length) ends.push(0); ends[lane]=a.ef; a.lane=lane; }
+  const lanes=Math.max(1,ends.length);
+  for(const a of list){ a.x=x0+a.es*pxPerDay; a.y=y0+a.lane*laneH; a.w=Math.max(20,a.duration*pxPerDay); a.h=boxH; a.cx=a.x+a.w/2; a.cy=a.y+boxH/2; }
+  const width=x0+dur*pxPerDay+right, height=y0+lanes*laneH+bottom;
+  return {pxPerDay,x0,y0,laneH,boxH,lanes,width,height,dur};
+}
+
+/* ================= SVG 渲染（移植自 svgRenderer.js） ================= */
+const FONT="'Microsoft YaHei','SimHei','PingFang SC',sans-serif";
+const C={crit:'#d32f2f',critFill:'#fdecea',norm:'#1976d2',normFill:'#e8f1fb',wave:'#f57c00',waveText:'#e65100',
+  grid:'#e3e8ee',axis:'#546e7a',text:'#263238',dim:'#78909c',ms:'#455a64',msFill:'#ffd54f',se:'#37474f'};
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function fmtDate(start,off){ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+off);
+  return String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function foot(start,s){ const d=new Date(start+'T00:00:00'); d.setDate(d.getDate()+s);
+  return Math.round((d-new Date(start+'T00:00:00'))/86400000); }
+function wavePath(x0,x1,cy,amp=3.5,per=8){ if(x1-x0<2)return'';
+  const n=Math.max(1,Math.round((x1-x0)/per)), dx=(x1-x0)/n; let d=`M ${x0.toFixed(1)} ${cy.toFixed(1)}`;
+  for(let i=0;i<n;i++){const xa=x0+dx*i, xm=xa+dx/2, xb=xa+dx; d+=` L ${xm.toFixed(1)} ${(cy-amp).toFixed(1)} L ${xb.toFixed(1)} ${cy.toFixed(1)}`;} return d; }
+
+function renderSVG(project, list, lay, result){
+  const {pxPerDay,x0,y0,laneH,boxH,width,height,dur}=lay; const P=[];
+  const startDate=project.startDate, endDate=fmtDate(startDate,dur);
+  const durStr=(result.cp||[]).join(' → ');
+  const push=s=>P.push(s);
+  P.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}">`);
+  P.push(`<rect width="${width}" height="${height}" fill="#fff"/>`);
+  P.push(`<defs><marker id="aC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${C.crit}"/></marker><marker id="aN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${C.norm}"/></marker></defs>`);
+  P.push(`<text x="${x0}" y="30" font-size="20" font-weight="bold" fill="${C.text}">${esc(project.projectName||'未命名项目')} — 单代号时标网络进度计划图</text>`);
+  P.push(`<text x="${x0}" y="52" font-size="12" fill="${C.dim}">计划工期 ${dur} 天（${fmtDate(startDate,0)} ~ ${endDate}）｜关键线路：${esc(durStr)}</text>`);
+  const gt=y0-8, gb=y0+lay.lanes*laneH+8;
+  for(let d=0; d<=dur; d+=7){ const x=x0+d*pxPerDay;
+    P.push(`<line x1="${x}" y1="${gt}" x2="${x}" y2="${gb}" stroke="${C.grid}"/><line x1="${x}" y1="${gt}" x2="${x}" y2="${gt+4}" stroke="${C.axis}"/><text x="${x}" y="${gt-20}" font-size="10" fill="${C.axis}" text-anchor="middle">${fmtDate(startDate,d)}</text><text x="${x}" y="${gt-7}" font-size="9" fill="${C.dim}" text-anchor="middle">D${d}</text>`);
+  }
+  const xE=x0+dur*pxPerDay;
+  P.push(`<line x1="${xE}" y1="${gt}" x2="${xE}" y2="${gb}" stroke="${C.grid}"/><text x="${xE}" y="${gt-20}" font-size="10" fill="${C.axis}" text-anchor="middle">${endDate}</text><text x="${xE}" y="${gt-7}" font-size="9" fill="${C.dim}" text-anchor="middle">D${dur}</text>`);
+  const cy=y0+(lay.lanes*laneH)/2;
+  const dia=(x,y,fill,stroke,label)=>{const r=7; P.push(`<path d="M ${x} ${y-r} L ${x+r} ${y} L ${x} ${y+r} L ${x-r} ${y} Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/><text x="${x}" y="${y+r+18}" font-size="10" fill="${C.text}" text-anchor="middle">${label}</text>`);};
+  dia(x0,cy,C.se,C.se,'开始'); dia(xE,cy,C.se,C.se,'结束');
+  for(const m of (project.milestones||[])){ const off=foot(startDate,m.date); if(off<0||off>dur)continue; const x=x0+off*pxPerDay;
+    P.push(`<path d="M ${x} ${gt} L ${x+6} ${gt-10} L ${x-6} ${gt-10} Z" fill="${C.msFill}" stroke="${C.ms}"/><text x="${x}" y="${gt-16}" font-size="10" fill="${C.ms}" text-anchor="middle">${esc(m.name)}</text>`);
+  }
+  for(const a of list) if(a.ff>0){ const w0=a.x+a.w, w1=w0+a.ff*pxPerDay, p=wavePath(w0,w1,a.cy); if(p) P.push(`<path d="${p}" fill="none" stroke="${C.wave}" stroke-width="1.6"/>`); }
+  for(const a of list){ const b=a.critical?C.crit:C.norm, f=a.critical?C.critFill:C.normFill;
+    P.push(`<rect x="${a.x.toFixed(1)}" y="${a.y.toFixed(1)}" width="${a.w.toFixed(1)}" height="${boxH}" rx="4" fill="${f}" stroke="${b}" stroke-width="${a.critical?2:1.3}"/>`);
+    if(a.w>=52){ P.push(`<text x="${a.cx.toFixed(1)}" y="${a.y+17}" font-size="11" fill="${C.text}" text-anchor="middle">${esc(a.name)}</text><text x="${a.cx.toFixed(1)}" y="${a.y+32}" font-size="10" fill="${a.critical?C.crit:C.norm}" text-anchor="middle">${a.duration}天</text>`); }
+    else P.push(`<text x="${a.cx.toFixed(1)}" y="${a.y+boxH/2+3.5}" font-size="10" fill="${C.text}" text-anchor="middle">${esc(a.name)}</text>`);
+  }
+  const byId={}; list.forEach(a=>byId[a.id]=a);
+  for(const a of list){ const ex=a.x+a.w+a.ff*pxPerDay, mk=a.critical?'aC':'aN', col=a.critical?C.crit:C.norm;
+    for(const sId of (a.predecessors||[])){ const s=byId[sId]; if(!s)continue; const sx=s.x;
+      if(a.lane===s.lane) P.push(`<line x1="${ex.toFixed(1)}" y1="${a.cy.toFixed(1)}" x2="${sx.toFixed(1)}" y2="${s.cy.toFixed(1)}" stroke="${col}" stroke-width="${a.critical?2:1.4}" marker-end="url(#${mk})"/>`);
+      else { const mid=Math.max(ex+8,sx-10); P.push(`<path d="M ${ex.toFixed(1)} ${a.cy.toFixed(1)} L ${mid.toFixed(1)} ${a.cy.toFixed(1)} L ${mid.toFixed(1)} ${s.cy.toFixed(1)} L ${sx.toFixed(1)} ${s.cy.toFixed(1)}" fill="none" stroke="${col}" stroke-width="${a.critical?2:1.4}" marker-end="url(#${mk})"/>`); }
+    }
+  }
+  const ly=height-18, lx=x0;
+  P.push(`<rect x="${lx}" y="${ly-12}" width="14" height="14" rx="3" fill="${C.critFill}" stroke="${C.crit}" stroke-width="2"/><text x="${lx+20}" y="${ly}" font-size="11" fill="${C.text}">关键工作</text>`);
+  P.push(`<rect x="${lx+110}" y="${ly-12}" width="14" height="14" rx="3" fill="${C.normFill}" stroke="${C.norm}"/><text x="${lx+130}" y="${ly}" font-size="11" fill="${C.text}">非关键工作</text>`);
+  const wp=wavePath(lx+240,lx+280,ly-5)||''; P.push(`<path d="${wp}" fill="none" stroke="${C.wave}" stroke-width="1.6"/><text x="${lx+286}" y="${ly}" font-size="11" fill="${C.text}">自由时差(波浪线)</text>`);
+  P.push(`<line x1="${lx+410}" y1="${ly-5}" x2="${lx+450}" y2="${ly-5}" stroke="${C.crit}" stroke-width="2" marker-end="url(#aC)"/><text x="${lx+458}" y="${ly}" font-size="11" fill="${C.text}">关键线路</text>`);
+  P.push('</svg>');
+  svgOut=P.join('\n');
+  return svgOut;
+}
+
+/* ================= DOM 渲染 ================= */
+const $=id=>document.getElementById(id);
+function catOptions(sel){ return Object.keys(PRODUCTIVITY).map(k=>`<option value="${k}" ${k===sel?'selected':''}>${PRODUCTIVITY[k].label}</option>`).join(''); }
+
+function renderTable(result){
+  const tb=$('tb'); let h='<tr><th>ID</th><th>名称</th><th>单位</th><th>工程量</th><th>类别</th><th>建议工期</th><th>工期</th><th>紧前</th><th>ES</th><th>LF</th><th>TF</th><th>FF</th></tr>';
+  for(const it of items){
+    const a=autoDur(it); const autoVal=a.days; const autoWarn=(Math.abs(it.duration-autoVal)<1e-9)?'':'(人工)';
+    h+=`<tr data-id="${esc(it.id)}" class="${it.critical?'crit-row':''}">
+      <td><b>${esc(it.id)}</b></td>
+      <td><input class="name" value="${esc(it.name)}"></td>
+      <td><select class="unit">${['项','m³','m²','m','t','kg'].map(u=>`<option ${u===it.unit?'selected':''}>${u}</option>`).join('')}</select></td>
+      <td><input class="num qty" type="number" step="any" value="${it.quantity}"></td>
+      <td><select class="cat">${catOptions(it.category)}</select></td>
+      <td><span class="dur-auto">${autoVal}天</span></td>
+      <td><input class="num dur" type="number" min="1" value="${it.duration}"><span class="dur-manual">${autoWarn}</span></td>
+      <td><input class="pred" value="${(it.predecessors||[]).join(',')}" title="逗号分隔的紧前ID"></td>
+      <td>${it.es}</td><td>${it.lf}</td><td>${it.tf}</td><td>${it.ff}</td>
+    </tr>`;
+  }
+  tb.innerHTML=h;
+  $('stkDur').textContent=result.dur; $('stkCrit').textContent=(result.cp||[]).join(' → ')||'–'; $('stkCnt').textContent=items.length;
+}
+
+function readFromTable(){
+  const rows=[...document.querySelectorAll('#tb tr[data-id]')];
+  for(const r of rows){
+    const id=r.dataset.id; const it=items.find(x=>x.id===id); if(!it)continue;
+    const q=r.querySelector('.qty'), d=r.querySelector('.dur'), p=r.querySelector('.pred'),
+          c=r.querySelector('.cat'), n=r.querySelector('.name'), u=r.querySelector('.unit');
+    it.name=n.value.trim()||it.id;
+    it.quantity=parseFloat(q.value)||0;
+    it.duration=Math.max(1,Math.round(parseFloat(d.value)||autoDur(it).days));
+    it.unit=u.value;
+    it.category=c.value;
+    it.predecessors=p.value?p.value.split(/[,，\s]+/).map(s=>s.trim()).filter(Boolean):[];
+  }
+  buildLogic(items);
+  const result=runCpm(items);
+  const lay=layout(items,result.dur);
+  const project={name:$('projName').value, startDate:$('startDate').value, milestones:[]};
+  const svg=renderSVG(project,items,lay,result);
+  $('svgScroll').innerHTML=svg;
+  renderTable(result);
+  fpsCount++;
+  $('fps').textContent=fpsCount+' 次';
+}
+function scheduleRender(){ clearTimeout(timer); timer=setTimeout(readFromTable,220); }
+
+/* ================= 交互事件 ================= */
+function addItem(){
+  const n=items.length+1; let id='A'+n; while(items.some(i=>i.id===id)) id='A'+(++n);
+  items.push({id, name:'新工作'+id, unit:'m³', quantity:100, category:'other', duration:10, predecessors:[], es:0,ef:0,ls:0,lf:0,tf:0,ff:0,critical:false,lane:0,x:0,y:0,w:0,h:0});
+  computeDurations(items);
+  scheduleRender();
+}
+function resetSample(){
+  items=JSON.parse(JSON.stringify(SAMPLE));
+  $('projName').value='某办公楼建设项目'; $('startDate').value='2026-09-15';
+  computeDurations(items); buildLogic(items); scheduleRender();
+}
+function loadFromJson(list, proj){
+  items=list.map(i=>({id:i.id,name:i.name,unit:i.unit||'',quantity:+i.quantity||0,category:i.category||classify(i.name),duration:(i.manualDuration||0)||0,predecessors:i.predecessors||[],es:0,ef:0,ls:0,lf:0,tf:0,ff:0,critical:false,lane:0,x:0,y:0,w:0,h:0}));
+  if(proj){ if(proj.name)$('projName').value=proj.name; if(proj.startDate)$('startDate').value=proj.startDate; }
+  computeDurations(items); buildLogic(items); scheduleRender();
+}
+
+/* 关键线路动画 */
+function highlightDemo(){
+  if(demoMode){ stopDemo(); return; }
+  demoMode=true; $('btnHighlight').textContent='⏸ 停止动画';
+  const res=runCpm(items); const cp=res.cp;
+  if(!cp.length){ stopDemo(); return; }
+  let i=0; const steps=$('demoSteps');
+  const byId={}; items.forEach(a=>byId[a.id]=a);
+  function step(){
+    if(!demoMode)return;
+    const id=cp[i]; const a=byId[id]; if(a){
+      document.querySelectorAll('#tb tr[data-id]').forEach(r=>r.classList.remove('seen'));
+      const tr=document.querySelector(`#tb tr[data-id="${id}"]`); if(tr)tr.classList.add('seen');
+      const el=document.querySelector(`rect[x="${a.x.toFixed(1)}"][y="${a.y.toFixed(1)}"]`);
+      if(el){ el.setAttribute('stroke','#ff1744'); el.setAttribute('stroke-width','3.5'); }
+      steps.innerHTML=`<b>${id}</b> ${esc(a.name)}（${a.duration}天）：ES=${a.es} EF=${a.ef}`;
+    }
+    i=(i+1)%cp.length;
+    animTimer=setTimeout(step,600);
+  }
+  step();
+}
+function stopDemo(){ demoMode=false; $('btnHighlight').textContent='▶ 关键线路动画'; $('demoSteps').innerHTML='';
+  if(animTimer)clearTimeout(animTimer); readFromTable(); }
+
+function download(kind){
+  if(!svgOut){alert('请先等待图表生成');return;}
+  if(kind==='svg'){
+    const blob=new Blob([svgOut],{type:'image/svg+xml;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='时标网络进度计划图.svg'; a.click();
+  } else {
+    const img=new Image();
+    const svgBlob=new Blob([svgOut],{type:'image/svg+xml;charset=utf-8'});
+    const url=URL.createObjectURL(svgBlob);
+    img.onload=()=>{ const m=document.createElement('canvas');
+      const w=svgOut.match(/width="([\d.]+)"/)[1], h=svgOut.match(/height="([\d.]+)"/)[1];
+      m.width=+w*2; m.height=+h*2; const ctx=m.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,m.width,m.height);
+      ctx.drawImage(img,0,0,m.width,m.height);
+      const a=document.createElement('a'); a.href=m.toDataURL('image/png'); a.download='时标网络进度计划图.png'; a.click(); URL.revokeObjectURL(url);
+    };
+    img.src=url;
+  }
+}
+
+/* ================= 样例数据 ================= */
+const SAMPLE=[
+ {id:'A1',name:'施工准备',unit:'项',quantity:1,category:'prepare',predecessors:[],manualDuration:null},
+ {id:'A2',name:'土方开挖',unit:'m³',quantity:15000,category:'earthwork',predecessors:['A1'],manualDuration:null},
+ {id:'A3',name:'基础垫层',unit:'m³',quantity:600,category:'cushion',predecessors:['A2'],manualDuration:null},
+ {id:'A4',name:'基础及地下结构',unit:'m³',quantity:2500,category:'foundation',predecessors:['A3'],manualDuration:null},
+ {id:'A5',name:'主体结构(1-3层)',unit:'m²',quantity:4800,category:'structure',predecessors:['A4'],manualDuration:null},
+ {id:'A6',name:'主体结构(4-6层)',unit:'m²',quantity:4800,category:'structure',predecessors:['A5'],manualDuration:null},
+ {id:'A7',name:'二次结构砌筑',unit:'m³',quantity:3200,category:'masonry',predecessors:['A6'],manualDuration:null},
+ {id:'A8',name:'屋面工程',unit:'m²',quantity:1600,category:'roof',predecessors:['A6'],manualDuration:null},
+ {id:'A9',name:'外立面幕墙',unit:'m²',quantity:5200,category:'facade',predecessors:['A6'],manualDuration:20},
+ {id:'A10',name:'机电安装',unit:'m²',quantity:9600,category:'mep',predecessors:['A6'],manualDuration:null},
+ {id:'A11',name:'室内精装修',unit:'m²',quantity:7200,category:'interior',predecessors:['A7','A10'],manualDuration:null},
+ {id:'A12',name:'室外工程',unit:'m²',quantity:4000,category:'sitework',predecessors:['A6'],manualDuration:null},
+ {id:'A13',name:'竣工验收',unit:'项',quantity:1,category:'handover',predecessors:['A8','A9','A11','A12'],manualDuration:null},
+];
+
+/* ================= 初始化 & 绑定 ================= */
+document.addEventListener('DOMContentLoaded',()=>{
+  $('btnAdd').onclick=addItem;
+  $('btnReset').onclick=resetSample;
+  $('btnHighlight').onclick=highlightDemo;
+  $('btnDownload').onclick=()=>{ if(confirm('下载为 PNG（高清位图）？\n点“取消”则导出 SVG（矢量）')) download('png'); else download('svg'); };
+  $('btnZoomIn').onclick=()=>{ pxPerDay=Math.min(28,pxPerDay+2); $('pxPerDay').value=pxPerDay; scheduleRender(); };
+  $('btnZoomOut').onclick=()=>{ pxPerDay=Math.max(6,pxPerDay-2); $('pxPerDay').value=pxPerDay; scheduleRender(); };
+  $('pxPerDay').onchange=e=>{ pxPerDay=+e.target.value; scheduleRender(); };
+  $('projName').oninput=scheduleRender; $('startDate').onchange=scheduleRender;
+  $('btnLoadJson').onclick=()=>$('fileJson').click();
+  $('fileJson').onchange=e=>{
+    const f=e.target.files[0]; if(!f)return;
+    const r=new FileReader(); r.onload=()=>{ try{
+      const data=JSON.parse(r.result);
+      if(Array.isArray(data)) loadFromJson(data);
+      else if(data.items) loadFromJson(data.items,data);
+      else throw new Error('JSON 需为数组或含 items 字段');
+    }catch(err){ alert('导入失败：'+err.message);} }; r.readAsText(f); e.target.value='';
+  };
+  document.addEventListener('input',e=>{ if(e.target.closest('#tb')) scheduleRender(); });
+  resetSample();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "projectName": "某办公楼建设项目",
+  "items": [
+    { "id": "A1",  "code": "011101001001", "name": "施工准备",         "unit": "项",  "quantity": 1,     "category": "prepare",    "predecessors": [],                        "manualDuration": null },
+    { "id": "A2",  "code": "010101002001", "name": "土方开挖",         "unit": "m³",  "quantity": 15000, "category": "earthwork",  "predecessors": ["A1"],                    "manualDuration": null },
+    { "id": "A3",  "code": "010501001001", "name": "基础垫层",         "unit": "m³",  "quantity": 600,   "category": "cushion",    "predecessors": ["A2"],                    "manualDuration": null },
+    { "id": "A4",  "code": "010502001001", "name": "基础及地下结构",   "unit": "m³",  "quantity": 2500,  "category": "foundation", "predecessors": ["A3"],                    "manualDuration": null },
+    { "id": "A5",  "code": "010502001002", "name": "主体结构(1-3层)",  "unit": "m²",  "quantity": 4800,  "category": "structure",  "predecessors": ["A4"],                    "manualDuration": null },
+    { "id": "A6",  "code": "010502001003", "name": "主体结构(4-6层)",  "unit": "m²",  "quantity": 4800,  "category": "structure",  "predecessors": ["A5"],                    "manualDuration": null },
+    { "id": "A7",  "code": "010403001001", "name": "二次结构砌筑",     "unit": "m³",  "quantity": 3200,  "category": "masonry",    "predecessors": ["A6"],                    "manualDuration": null },
+    { "id": "A8",  "code": "010902001001", "name": "屋面工程",         "unit": "m²",  "quantity": 1600,  "category": "roof",       "predecessors": ["A6"],                    "manualDuration": null },
+    { "id": "A9",  "code": "011103001001", "name": "外立面幕墙",       "unit": "m²",  "quantity": 5200,  "category": "facade",     "predecessors": ["A6"],                    "manualDuration": 20 },
+    { "id": "A10", "code": "030904001001", "name": "机电安装",         "unit": "m²",  "quantity": 9600,  "category": "mep",        "predecessors": ["A6"],                    "manualDuration": null },
+    { "id": "A11", "code": "011102001001", "name": "室内精装修",       "unit": "m²",  "quantity": 7200,  "category": "interior",   "predecessors": ["A7", "A10"],             "manualDuration": null },
+    { "id": "A12", "code": "011104001001", "name": "室外工程",         "unit": "m²",  "quantity": 4000,  "category": "sitework",   "predecessors": ["A6"],                    "manualDuration": null },
+    { "id": "A13", "code": "990100001001", "name": "竣工验收",         "unit": "项",  "quantity": 1,     "category": "handover",   "predecessors": ["A8", "A9", "A11", "A12"], "manualDuration": null }
+  ]
+}

@@ -1,0 +1,13 @@
+# 依赖与构建产物
+node_modules/
+*.log
+
+# 交付压缩包（不含进仓库）
+*.zip
+
+# 系统与编辑器文件
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

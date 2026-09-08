@@ -1,0 +1,18 @@
+{
+  "name": "network-schedule-prototype",
+  "version": "0.1.0",
+  "description": "根据招标文件与工程量清单自动生成单代号时标网络进度计划图的原型",
+  "main": "src/index.js",
+  "scripts": {
+    "demo": "node src/index.js",
+    "make-sample-pdf": "node src/makeSamplePdf.js",
+    "pdf-demo": "node src/index.js --bid-pdf data/招标文件.pdf --boq-pdf data/工程量清单.pdf"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^3.11.174"
+  }
+}

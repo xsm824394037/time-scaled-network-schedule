@@ -1,0 +1,257 @@
+{
+  "project": {
+    "name": "某办公楼建设项目",
+    "startDate": "2026-09-15",
+    "contractDurationDays": 100
+  },
+  "planDurationDays": 92,
+  "criticalPath": [
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "A6",
+    "A7",
+    "A11",
+    "A13"
+  ],
+  "activities": [
+    {
+      "id": "A1",
+      "name": "施工准备",
+      "unit": "项",
+      "quantity": 1,
+      "duration": 5,
+      "durationSource": "auto-fixed",
+      "predecessors": [],
+      "es": 0,
+      "ef": 5,
+      "ls": 0,
+      "lf": 5,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    },
+    {
+      "id": "A2",
+      "name": "土方开挖",
+      "unit": "m³",
+      "quantity": 15000,
+      "duration": 13,
+      "durationSource": "auto",
+      "predecessors": [
+        "A1"
+      ],
+      "es": 5,
+      "ef": 18,
+      "ls": 5,
+      "lf": 18,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    },
+    {
+      "id": "A3",
+      "name": "基础垫层",
+      "unit": "m³",
+      "quantity": 600,
+      "duration": 5,
+      "durationSource": "auto",
+      "predecessors": [
+        "A2"
+      ],
+      "es": 18,
+      "ef": 23,
+      "ls": 18,
+      "lf": 23,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    },
+    {
+      "id": "A4",
+      "name": "基础及地下结构",
+      "unit": "m³",
+      "quantity": 2500,
+      "duration": 9,
+      "durationSource": "auto",
+      "predecessors": [
+        "A3"
+      ],
+      "es": 23,
+      "ef": 32,
+      "ls": 23,
+      "lf": 32,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    },
+    {
+      "id": "A5",
+      "name": "主体结构(1-3层)",
+      "unit": "m²",
+      "quantity": 4800,
+      "duration": 12,
+      "durationSource": "auto",
+      "predecessors": [
+        "A4"
+      ],
+      "es": 32,
+      "ef": 44,
+      "ls": 32,
+      "lf": 44,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    },
+    {
+      "id": "A6",
+      "name": "主体结构(4-6层)",
+      "unit": "m²",
+      "quantity": 4800,
+      "duration": 12,
+      "durationSource": "auto",
+      "predecessors": [
+        "A5"
+      ],
+      "es": 44,
+      "ef": 56,
+      "ls": 44,
+      "lf": 56,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    },
+    {
+      "id": "A7",
+      "name": "二次结构砌筑",
+      "unit": "m³",
+      "quantity": 3200,
+      "duration": 13,
+      "durationSource": "auto",
+      "predecessors": [
+        "A6"
+      ],
+      "es": 56,
+      "ef": 69,
+      "ls": 56,
+      "lf": 69,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    },
+    {
+      "id": "A8",
+      "name": "屋面工程",
+      "unit": "m²",
+      "quantity": 1600,
+      "duration": 8,
+      "durationSource": "auto",
+      "predecessors": [
+        "A6"
+      ],
+      "es": 56,
+      "ef": 64,
+      "ls": 77,
+      "lf": 85,
+      "tf": 21,
+      "ff": 21,
+      "critical": false
+    },
+    {
+      "id": "A9",
+      "name": "外立面幕墙",
+      "unit": "m²",
+      "quantity": 5200,
+      "duration": 20,
+      "durationSource": "manual",
+      "predecessors": [
+        "A6"
+      ],
+      "es": 56,
+      "ef": 76,
+      "ls": 65,
+      "lf": 85,
+      "tf": 9,
+      "ff": 9,
+      "critical": false
+    },
+    {
+      "id": "A10",
+      "name": "机电安装",
+      "unit": "m²",
+      "quantity": 9600,
+      "duration": 12,
+      "durationSource": "auto",
+      "predecessors": [
+        "A6"
+      ],
+      "es": 56,
+      "ef": 68,
+      "ls": 57,
+      "lf": 69,
+      "tf": 1,
+      "ff": 1,
+      "critical": false
+    },
+    {
+      "id": "A11",
+      "name": "室内精装修",
+      "unit": "m²",
+      "quantity": 7200,
+      "duration": 16,
+      "durationSource": "auto",
+      "predecessors": [
+        "A7",
+        "A10"
+      ],
+      "es": 69,
+      "ef": 85,
+      "ls": 69,
+      "lf": 85,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    },
+    {
+      "id": "A12",
+      "name": "室外工程",
+      "unit": "m²",
+      "quantity": 4000,
+      "duration": 8,
+      "durationSource": "auto",
+      "predecessors": [
+        "A6"
+      ],
+      "es": 56,
+      "ef": 64,
+      "ls": 77,
+      "lf": 85,
+      "tf": 21,
+      "ff": 21,
+      "critical": false
+    },
+    {
+      "id": "A13",
+      "name": "竣工验收",
+      "unit": "项",
+      "quantity": 1,
+      "duration": 7,
+      "durationSource": "auto-fixed",
+      "predecessors": [
+        "A8",
+        "A9",
+        "A11",
+        "A12"
+      ],
+      "es": 85,
+      "ef": 92,
+      "ls": 85,
+      "lf": 92,
+      "tf": 0,
+      "ff": 0,
+      "critical": true
+    }
+  ]
+}
