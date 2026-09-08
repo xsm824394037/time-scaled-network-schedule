@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>双代号时标网络进度计划 — 交互式演示</title>
+<title>单代号时标网络进度计划 — 交互式演示</title>
 <style>
   :root{
     --crit:#d32f2f; --norm:#1976d2; --wave:#f57c00; --bg:#f4f6f8; --card:#fff;
@@ -65,10 +65,12 @@
 
   .footer{font-size:11px;color:var(--muted);text-align:center;padding:12px;border-top:1px solid var(--line);}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body>
 <header>
-  <h1>🏗 双代号时标网络进度计划 · 交互式演示</h1>
+  <h1>🏗 单代号时标网络进度计划 · 交互式演示</h1>
   <span class="badge">双击本文件即可运行 · 无需服务器</span>
 </header>
 
@@ -82,13 +84,16 @@
         <label>开工日期<input id="startDate" type="date" value="2026-09-15"></label>
       </div>
       <div class="toolbar">
-        <button class="btn primary" id="btnAdd">＋ 新增工作</button>
+        <button class="btn primary" id="btnGenerate">生成网络图</button>
+        <button class="btn" id="btnAdd">＋ 新增工作</button>
         <button class="btn" id="btnReset">重置为样例</button>
         <button class="btn" id="btnLoadJson">导入JSON工程</button>
+        <button class="btn" id="btnLoadPdf">导入PDF清单</button>
         <button class="btn warn" id="btnHighlight">▶ 关键线路动画</button>
         <button class="btn danger" id="btnDownload">⬇ 导出SVG/PNG</button>
       </div>
       <input type="file" id="fileJson" accept=".json" style="display:none">
+      <input type="file" id="filePdf" accept=".pdf" style="display:none">
       <div class="stat">
         <span class="chip">计划工期 <b id="stkDur">–</b> 天</span>
         <span class="chip crit">关键线路 <b id="stkCrit">–</b></span>
@@ -170,6 +175,7 @@ function computeDurations(list){
 let items = [];
 let pxPerDay = 12;
 let svgOut = ''; // 当前渲染的 SVG 字符串（用于下载）
+let hasRenderedGraph = false;
 let timer=null; let fpsCount=0; let animTimer=null; let demoMode=false;
 
 /* ================= 核心算法 ================= */
@@ -239,7 +245,7 @@ function renderSVG(project, list, lay, result){
   P.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT}">`);
   P.push(`<rect width="${width}" height="${height}" fill="#fff"/>`);
   P.push(`<defs><marker id="aC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${C.crit}"/></marker><marker id="aN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${C.norm}"/></marker></defs>`);
-  P.push(`<text x="${x0}" y="30" font-size="20" font-weight="bold" fill="${C.text}">${esc(project.projectName||'未命名项目')} — 双代号时标网络进度计划图</text>`);
+  P.push(`<text x="${x0}" y="30" font-size="20" font-weight="bold" fill="${C.text}">${esc(project.projectName||'未命名项目')} — 单代号时标网络进度计划图</text>`);
   P.push(`<text x="${x0}" y="52" font-size="12" fill="${C.dim}">计划工期 ${dur} 天（${fmtDate(startDate,0)} ~ ${endDate}）｜关键线路：${esc(durStr)}</text>`);
   const gt=y0-8, gb=y0+lay.lanes*laneH+8;
   for(let d=0; d<=dur; d+=7){ const x=x0+d*pxPerDay;
@@ -300,7 +306,13 @@ function renderTable(result){
   $('stkDur').textContent=result.dur; $('stkCrit').textContent=(result.cp||[]).join(' → ')||'–'; $('stkCnt').textContent=items.length;
 }
 
-function readFromTable(){
+function showEmptyState(){
+  $('tb').innerHTML = '<tr><th>ID</th><th>名称</th><th>单位</th><th>工程量</th><th>类别</th><th>建议工期</th><th>工期</th><th>紧前</th><th>ES</th><th>LF</th><th>TF</th><th>FF</th></tr><tr><td colspan="12" style="text-align:center;color:#78909c;padding:24px 12px;">暂无工作项，请导入 JSON 工程或重置为样例</td></tr>';
+  $('svgScroll').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#78909c;flex-direction:column;"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#78909c" stroke-width="1.5" style="margin-bottom:12px;opacity:.7;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><p style="margin:0;">点击「生成网络图」后渲染时标网络进度计划图</p></div>';
+  $('stkDur').textContent='–'; $('stkCrit').textContent='–'; $('stkCnt').textContent='0';
+  $('fps').textContent='–';
+}
+function recalcAndRenderTable(){
   const rows=[...document.querySelectorAll('#tb tr[data-id]')];
   for(const r of rows){
     const id=r.dataset.id; const it=items.find(x=>x.id===id); if(!it)continue;
@@ -315,35 +327,77 @@ function readFromTable(){
   }
   buildLogic(items);
   const result=runCpm(items);
+  renderTable(result);
+}
+function renderGraph(){
+  if(items.length===0){ alert('请先添加或导入工作项'); return; }
+  const result=runCpm(items);
   const lay=layout(items,result.dur);
   const project={name:$('projName').value, startDate:$('startDate').value, milestones:[]};
-  const svg=renderSVG(project,items,lay,result);
-  $('svgScroll').innerHTML=svg;
+  svgOut=renderSVG(project,items,lay,result);
+  $('svgScroll').innerHTML=svgOut;
   renderTable(result);
-  fpsCount++;
-  $('fps').textContent=fpsCount+' 次';
+  hasRenderedGraph=true;
+  fpsCount++; $('fps').textContent=fpsCount+' 次';
 }
-function scheduleRender(){ clearTimeout(timer); timer=setTimeout(readFromTable,220); }
+function clearGraph(){
+  hasRenderedGraph=false;
+  svgOut='';
+  $('svgScroll').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#78909c;flex-direction:column;"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#78909c" stroke-width="1.5" style="margin-bottom:12px;opacity:.7;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><p style="margin:0;">点击「生成网络图」后渲染时标网络进度计划图</p></div>';
+}
+function generateGraph(){ renderGraph(); }
+function scheduleRecalc(){ clearTimeout(timer); timer=setTimeout(()=>{ recalcAndRenderTable(); clearGraph(); },220); }
 
 /* ================= 交互事件 ================= */
 function addItem(){
   const n=items.length+1; let id='A'+n; while(items.some(i=>i.id===id)) id='A'+(++n);
   items.push({id, name:'新工作'+id, unit:'m³', quantity:100, category:'other', duration:10, predecessors:[], es:0,ef:0,ls:0,lf:0,tf:0,ff:0,critical:false,lane:0,x:0,y:0,w:0,h:0});
   computeDurations(items);
-  scheduleRender();
+  recalcAndRenderTable(); clearGraph();
 }
 function resetSample(){
   items=JSON.parse(JSON.stringify(SAMPLE));
   $('projName').value='某办公楼建设项目'; $('startDate').value='2026-09-15';
-  computeDurations(items); buildLogic(items); scheduleRender();
+  computeDurations(items); buildLogic(items); recalcAndRenderTable(); clearGraph();
 }
 function loadFromJson(list, proj){
   items=list.map(i=>({id:i.id,name:i.name,unit:i.unit||'',quantity:+i.quantity||0,category:i.category||classify(i.name),duration:(i.manualDuration||0)||0,predecessors:i.predecessors||[],es:0,ef:0,ls:0,lf:0,tf:0,ff:0,critical:false,lane:0,x:0,y:0,w:0,h:0}));
   if(proj){ if(proj.name)$('projName').value=proj.name; if(proj.startDate)$('startDate').value=proj.startDate; }
-  computeDurations(items); buildLogic(items); scheduleRender();
+  computeDurations(items); buildLogic(items); recalcAndRenderTable(); clearGraph();
 }
 
-/* 关键线路动画 */
+/* ===== PDF 文本 → 工作项解析 ===== */
+function parsePdfItems(text){
+  const list=[];
+  const seen=new Set();
+  const units='m³|m3|m²|m2|㎡|kg|t|吨|项|个|套|樘|处|米';
+  // 类型1（主）：序号(如 A1) 名称 单位 数量 [紧前]——用 .+? 名称允许含数字，紧前用 [A\d,]+ 避免跨行吃空格
+  const type1=new RegExp('^[ \t]*(A\\d+)[ \t]+(.+?)[ \t]+('+units+')[ \t]+(\\d+(?:\\.\\d+)?)(?:[ \t]+([A\\d,]+))?[ \t]*$','gm');
+  // 类型2（兜底）：清单编码(如 010101002001) 名称 数量的行
+  const type2=new RegExp('^[ \t]*(\\d{6,12})[ \t]+(.+?)[ \t]+(\\d+(?:\\.\\d+)?)[ \t]+('+units+')[ \t]*$','gm');
+  let m; let rows=[];
+  // 先尽量用「序号 A1」格式识别
+  while((m=type1.exec(text))){
+    const id=m[1].toUpperCase(); if(seen.has(id))continue; seen.add(id);
+    rows.push({ id, name:m[2].trim(), unit:m[3], quantity:+m[4], pred:(m[5]||'').split(/[\s,]+/).filter(Boolean).map(x=>x.toUpperCase()) });
+  }
+  // 若序号格式一条都没识别到（可能是纯清单编码表），退回编码格式
+  if(rows.length===0){
+    while((m=type2.exec(text))){
+      const code=m[1]; if(seen.has(code))continue; seen.add(code);
+      rows.push({ id:'A'+(rows.length+1), code, name:m[2].trim(), unit:'', quantity:+m[3], pred:[] });
+    }
+  }
+  // 至少识别出 2 个项目才视为成功
+  if(rows.length>=2){
+    for(const r of rows){
+      list.push({ id:r.id, code:r.code||'', name:r.name, unit:r.unit||'', quantity:r.quantity||0, predecessors:r.pred||[], manualDuration:null });
+    }
+  }
+  return list;
+}
+
+  /* 关键线路动画 */
 function highlightDemo(){
   if(demoMode){ stopDemo(); return; }
   demoMode=true; $('btnHighlight').textContent='⏸ 停止动画';
@@ -366,7 +420,7 @@ function highlightDemo(){
   step();
 }
 function stopDemo(){ demoMode=false; $('btnHighlight').textContent='▶ 关键线路动画'; $('demoSteps').innerHTML='';
-  if(animTimer)clearTimeout(animTimer); readFromTable(); }
+  if(animTimer)clearTimeout(animTimer); recalcAndRenderTable(); }
 
 function download(kind){
   if(!svgOut){alert('请先等待图表生成');return;}
@@ -410,10 +464,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnReset').onclick=resetSample;
   $('btnHighlight').onclick=highlightDemo;
   $('btnDownload').onclick=()=>{ if(confirm('下载为 PNG（高清位图）？\n点“取消”则导出 SVG（矢量）')) download('png'); else download('svg'); };
-  $('btnZoomIn').onclick=()=>{ pxPerDay=Math.min(28,pxPerDay+2); $('pxPerDay').value=pxPerDay; scheduleRender(); };
-  $('btnZoomOut').onclick=()=>{ pxPerDay=Math.max(6,pxPerDay-2); $('pxPerDay').value=pxPerDay; scheduleRender(); };
-  $('pxPerDay').onchange=e=>{ pxPerDay=+e.target.value; scheduleRender(); };
-  $('projName').oninput=scheduleRender; $('startDate').onchange=scheduleRender;
+  $('btnZoomIn').onclick=()=>{ pxPerDay=Math.min(28,pxPerDay+2); $('pxPerDay').value=pxPerDay; if(hasRenderedGraph) renderGraph(); };
+  $('btnZoomOut').onclick=()=>{ pxPerDay=Math.max(6,pxPerDay-2); $('pxPerDay').value=pxPerDay; if(hasRenderedGraph) renderGraph(); };
+  $('pxPerDay').onchange=e=>{ pxPerDay=+e.target.value; if(hasRenderedGraph) renderGraph(); };
+  $('projName').oninput=scheduleRecalc; $('startDate').onchange=scheduleRecalc;
   $('btnLoadJson').onclick=()=>$('fileJson').click();
   $('fileJson').onchange=e=>{
     const f=e.target.files[0]; if(!f)return;
@@ -424,8 +478,27 @@ document.addEventListener('DOMContentLoaded',()=>{
       else throw new Error('JSON 需为数组或含 items 字段');
     }catch(err){ alert('导入失败：'+err.message);} }; r.readAsText(f); e.target.value='';
   };
-  document.addEventListener('input',e=>{ if(e.target.closest('#tb')) scheduleRender(); });
-  resetSample();
+  $('btnLoadPdf').onclick=()=>$('filePdf').click();
+  $('filePdf').onchange=e=>{
+    const f=e.target.files[0]; if(!f)return;
+    const r=new FileReader(); r.onload=async ()=>{ try{
+      const typed = new Uint8Array(r.result);
+      const pdf = await pdfjsLib.getDocument({data: typed}).promise;
+      let text = '';
+      for(let i=1;i<=pdf.numPages;i++){
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(it=>it.str).join(' ') + '\n';
+      }
+      const list = parsePdfItems(text);
+      if(list.length===0) throw new Error('未能从PDF中识别出工作项，请检查文本内容');
+      loadFromJson(list);
+    }catch(err){ alert('PDF 导入失败：'+err.message);} };
+    r.readAsArrayBuffer(f); e.target.value='';
+  };
+  document.addEventListener('input',e=>{ if(e.target.closest('#tb')) scheduleRecalc(); });
+  $('btnGenerate').onclick=generateGraph;
+  showEmptyState();
 });
 </script>
 </body>
