@@ -83,6 +83,10 @@
         <label>项目名称<input id="projName" value="某办公楼建设项目"></label>
         <label>开工日期<input id="startDate" type="date" value="2026-09-15"></label>
       </div>
+      <div class="row">
+        <label>合同工期<input id="contractDur" value="" placeholder="从招标文件自动提取" readonly></label>
+        <label>里程碑<input id="milestoneInfo" value="" placeholder="从招标文件自动提取" readonly></label>
+      </div>
       <div class="toolbar">
         <button class="btn primary" id="btnGenerate">生成网络图</button>
         <button class="btn" id="btnAdd">＋ 新增工作</button>
@@ -312,6 +316,7 @@ function showEmptyState(){
   $('svgScroll').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#78909c;flex-direction:column;"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#78909c" stroke-width="1.5" style="margin-bottom:12px;opacity:.7;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><p style="margin:0;">点击「生成网络图」后渲染时标网络进度计划图</p></div>';
   $('stkDur').textContent='–'; $('stkCrit').textContent='–'; $('stkCnt').textContent='0';
   $('fps').textContent='–';
+  $('contractDur').value=''; $('milestoneInfo').value='';
 }
 function recalcAndRenderTable(){
   const rows=[...document.querySelectorAll('#tb tr[data-id]')];
@@ -359,6 +364,7 @@ function addItem(){
 function resetSample(){
   items=JSON.parse(JSON.stringify(SAMPLE));
   $('projName').value='某办公楼建设项目'; $('startDate').value='2026-09-15';
+  $('contractDur').value=''; $('milestoneInfo').value='';
   computeDurations(items); buildLogic(items); recalcAndRenderTable(); clearGraph();
 }
 function loadFromJson(list, proj){
@@ -398,7 +404,25 @@ function parsePdfItems(text){
   return list;
 }
 
-  /* 关键线路动画 */
+/* ===== 招标文件摘要 → 项目信息解析 ===== */
+function parseBidPdf(text){
+  const info={ projectName:'', startDate:'', contractDurationDays:'', milestones:[] };
+  const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+  let inMilestone=false;
+  for(const line of lines){
+    let m;
+    m=line.match(/项目名称[：:]\s*(.+)/); if(m) info.projectName=m[1].trim();
+    m=line.match(/开工日期[：:]\s*(\d{4}-\d{2}-\d{2})/); if(m) info.startDate=m[1];
+    m=line.match(/合同工期[：:]\s*(\d+)/); if(m) info.contractDurationDays=m[1];
+    if(/里程碑/.test(line)){ inMilestone=true; continue; }
+    if(inMilestone){
+      m=line.match(/^(.+?)[：:]\s*(\d{4}-\d{2}-\d{2})\s*$/);
+      if(m) info.milestones.push({ name:m[1].trim(), date:m[2] });
+    }
+  }
+  return info;
+}
+
 function highlightDemo(){
   if(demoMode){ stopDemo(); return; }
   demoMode=true; $('btnHighlight').textContent='⏸ 停止动画';
@@ -511,8 +535,30 @@ document.addEventListener('DOMContentLoaded',()=>{
         if(line.trim()) text += line.trim() + '\n';
       }
       const list = parsePdfItems(text);
-      if(list.length===0) throw new Error('未能从PDF中识别出工作项，请检查文本内容');
-      loadFromJson(list);
+      if(list.length>0){
+        // 是工程量清单：加载工作项，同时尽量提取项目信息
+        const info = parseBidPdf(text);
+        loadFromJson(list, { name: info.projectName || undefined, startDate: info.startDate || undefined });
+        return;
+      }
+      // 无工作项：尝试当作招标文件摘要解析
+      const info = parseBidPdf(text);
+      const hasInfo = info.projectName || info.startDate || info.contractDurationDays || info.milestones.length;
+      if(hasInfo){
+        if(info.projectName) $('projName').value = info.projectName;
+        if(info.startDate) $('startDate').value = info.startDate;
+        if(info.contractDurationDays) $('contractDur').value = info.contractDurationDays + ' 日历天';
+        if(info.milestones.length) $('milestoneInfo').value = info.milestones.map(x=>x.name+'：'+x.date).join('；');
+        let msg = '✅ 已从「招标文件」中提取项目信息：\n';
+        if(info.projectName) msg += '· 项目名称：'+info.projectName+'\n';
+        if(info.startDate) msg += '· 开工日期：'+info.startDate+'\n';
+        if(info.contractDurationDays) msg += '· 合同工期：'+info.contractDurationDays+' 日历天\n';
+        if(info.milestones.length) msg += '· 里程碑：'+info.milestones.map(x=>x.name+'（'+x.date+'）').join('、')+'\n';
+        msg += '\n⚠️ 说明：该文件是招标文件「摘要」，不含工作项清单，因此未生成任务清单。\n如需生成网络图，请导入「工程量清单.pdf」或点击「重置为样例」。';
+        alert(msg);
+      } else {
+        alert('PDF 导入失败：未能从该文件识别出内容。\n\n支持的文件类型：\n· 工程量清单（含 序号/名称/单位/数量 表格）\n· 招标文件摘要（含 项目名称/工期/里程碑）\n\n注意：扫描版/图片型 PDF 暂不支持，请使用带文字层的 PDF。');
+      }
     }catch(err){ alert('PDF 导入失败：'+err.message);} };
     r.readAsArrayBuffer(f); e.target.value='';
   };
