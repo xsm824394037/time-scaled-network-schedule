@@ -89,6 +89,7 @@
         <button class="btn" id="btnReset">重置为样例</button>
         <button class="btn" id="btnLoadJson">导入JSON工程</button>
         <button class="btn" id="btnLoadPdf">导入PDF清单</button>
+        <button class="btn" id="btnDemoPdf">⬇ 示例PDF</button>
         <button class="btn warn" id="btnHighlight">▶ 关键线路动画</button>
         <button class="btn danger" id="btnDownload">⬇ 导出SVG/PNG</button>
       </div>
@@ -346,7 +347,7 @@ function clearGraph(){
   $('svgScroll').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:260px;color:#78909c;flex-direction:column;"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#78909c" stroke-width="1.5" style="margin-bottom:12px;opacity:.7;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg><p style="margin:0;">点击「生成网络图」后渲染时标网络进度计划图</p></div>';
 }
 function generateGraph(){ renderGraph(); }
-function scheduleRecalc(){ clearTimeout(timer); timer=setTimeout(()=>{ recalcAndRenderTable(); clearGraph(); },220); }
+function scheduleRecalc(){ clearTimeout(timer); timer=setTimeout(()=>{ recalcAndRenderTable(); if(items.length>0) renderGraph(); else clearGraph(); },220); }
 
 /* ================= 交互事件 ================= */
 function addItem(){
@@ -441,6 +442,18 @@ function download(kind){
   }
 }
 
+/* 一键下载示例 PDF（工程量清单 + 招标文件），供导入测试 */
+function downloadSamplePdfs(){
+  const files=[
+    ['demos/工程量清单.pdf','工程量清单.pdf'],
+    ['demos/招标文件.pdf','招标文件.pdf']
+  ];
+  for(const [url,name] of files){
+    const a=document.createElement('a'); a.href=url; a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+}
+
 /* ================= 样例数据 ================= */
 const SAMPLE=[
  {id:'A1',name:'施工准备',unit:'项',quantity:1,category:'prepare',predecessors:[],manualDuration:null},
@@ -479,6 +492,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     }catch(err){ alert('导入失败：'+err.message);} }; r.readAsText(f); e.target.value='';
   };
   $('btnLoadPdf').onclick=()=>$('filePdf').click();
+  $('btnDemoPdf').onclick=downloadSamplePdfs;
   $('filePdf').onchange=e=>{
     const f=e.target.files[0]; if(!f)return;
     const r=new FileReader(); r.onload=async ()=>{ try{
