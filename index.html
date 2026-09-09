@@ -91,7 +91,7 @@
         <button class="btn primary" id="btnGenerate">生成网络图</button>
         <button class="btn" id="btnAdd">＋ 新增工作</button>
         <button class="btn" id="btnReset">重置为样例</button>
-        <button class="btn" id="btnLoadJson">导入JSON工程</button>
+        <!-- <button class="btn" id="btnLoadJson">导入JSON工程</button> -->
         <button class="btn" id="btnLoadPdf">导入PDF清单</button>
         <button class="btn" id="btnDemoPdf">⬇ 示例PDF</button>
         <button class="btn warn" id="btnHighlight">▶ 关键线路动画</button>
@@ -505,7 +505,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnZoomOut').onclick=()=>{ pxPerDay=Math.max(6,pxPerDay-2); $('pxPerDay').value=pxPerDay; if(hasRenderedGraph) renderGraph(); };
   $('pxPerDay').onchange=e=>{ pxPerDay=+e.target.value; if(hasRenderedGraph) renderGraph(); };
   $('projName').oninput=scheduleRecalc; $('startDate').onchange=scheduleRecalc;
-  $('btnLoadJson').onclick=()=>$('fileJson').click();
+  const loadJsonBtn = $('btnLoadJson');
+if (loadJsonBtn) {
+    loadJsonBtn.onclick = () => $('fileJson').click();
+};
   $('fileJson').onchange=e=>{
     const f=e.target.files[0]; if(!f)return;
     const r=new FileReader(); r.onload=()=>{ try{
